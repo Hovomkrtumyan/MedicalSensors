@@ -1,164 +1,248 @@
-markdown
-# Medical Sensors Library for ESP32-P4
+# MedicalSensors Library
 
-A comprehensive Arduino library for reading multiple medical sensors on ESP32-P4 microcontroller.
-
-## Supported Sensors
-- BME280 (Environmental: Temperature, Humidity, Pressure)
-- QMC5883L (GY-271 Magnetometer/Compass)
-- MAX30205 (Precision Body Temperature)
-- MAX30102 (Heart Rate and Blood Oxygen/SpO2)
+Arduino library for medical sensors including BME280, QMC5883L, MAX30205, and MAX30102.
 
 ## Features
-- Unified interface for all sensors
-- Automatic sensor detection and initialization
-- Real-time heart rate and SpO2 monitoring
-- Environmental data logging
-- Built-in calibration and debugging tools
 
-## Wiring Diagram
-ESP32-P4 BME280 QMC5883L MAX30205 MAX30102
-3.3V --------- VCC ------ VCC ------ VCC ------ VIN
-GND --------- GND ------ GND ------ GND ------ GND
-GPIO28 --------- SDA ------ SDA ------ SDA ------ SDA
-GPIO32 --------- SCL ------ SCL ------ SCL ------ SCL
-
-text
-
-## I2C Addresses
-- BME280: 0x76
-- QMC5883L: 0x0D
-- MAX30205: 0x48
-- MAX30102: 0x57
+- **BME280**: Temperature, humidity, pressure, altitude
+- **QMC5883L**: 3-axis magnetometer (compass)
+- **MAX30205**: Medical-grade body temperature sensor
+- **MAX30102**: Heart rate and pulse oximetry sensor
 
 ## Installation
 
-1. Clone this repository or download the source files
-2. Place `SensorSystem.h` and `SensorSystem.cpp` in your Arduino project folder
-3. Include the library in your sketch: `#include "SensorSystem.h"`
+### PlatformIO
+Add to your `platformio.ini`:
+```ini
+lib_deps = 
+    https://github.com/Hovomkrtumyan/MedicalSensors.git
 
-## Dependencies
-- Adafruit BME280 Library
-- QMC5883LCompass Library
-- Protocentral_MAX30205 Library
-- SparkFun MAX3010x Library
 
-## Quick Start Example
+    Arduino IDE
+Download the library as ZIP
 
-```cpp
-#include "SensorSystem.h"
+Sketch → Include Library → Add .ZIP Library
 
-SensorSystem sensors(28, 32);  // Custom I2C pins
+Select the downloaded ZIP file
+
+Wiring
+Sensor	SDA Pin	SCL Pin	VCC	GND
+BME280	SDA	SCL	3.3V	GND
+QMC5883L	SDA	SCL	3.3V	GND
+MAX30205	SDA	SCL	3.3V	GND
+MAX30102	SDA	SCL	3.3V	GND
+Note: All sensors share the same I2C bus.
+
+Quick Start
+cpp
+#include <MedicalSensors.h>
+
+MedicalSensors sensors(21, 22);  // SDA, SCL pins
 
 void setup() {
   Serial.begin(115200);
-  sensors.begin();
+  
+  if (!sensors.begin()) {
+    Serial.println("Failed to initialize sensors!");
+    while (1);
+  }
+  
+  sensors.i2cScanner();
 }
 
 void loop() {
   sensors.update();
   
-  SensorSystem::SensorData data = sensors.getData();
+  MedicalSensors::SensorData data = sensors.getData();
   
-  // Access sensor data
-  float temp = data.bme280.temperature;
-  int heartRate = data.max30102.heartRate;
-  float bodyTemp = data.max30205.temperature;
-  // ... etc
+  if (data.bme280.present) {
+    Serial.printf("Temp: %.1f°C, Humidity: %.1f%%, Pressure: %.1fhPa\n",
+                  data.bme280.temperature,
+                  data.bme280.humidity,
+                  data.bme280.pressure);
+  }
+  
+  if (data.max30205.present) {
+    Serial.printf("Body Temp: %.2f°C - %s\n",
+                  data.max30205.temperature,
+                  data.max30205.feverStatus);
+  }
+  
+  if (data.max30102.present) {
+    Serial.printf("Heart Rate: %d BPM, Finger: %s\n",
+                  data.max30102.heartRate,
+                  data.max30102.fingerDetected ? "YES" : "NO");
+  }
+  
+  delay(1000);
 }
 API Reference
 Constructor
 cpp
-SensorSystem(uint8_t sdaPin = 28, uint8_t sclPin = 32);
+MedicalSensors(uint8_t sdaPin = 21, uint8_t sclPin = 22);
 Methods
-bool begin() - Initialize all sensors
+bool begin(): Initialize all sensors
 
-void update() - Update sensor readings
+void update(): Update sensor readings
 
-SensorData getData() - Get latest sensor data
+SensorData getData(): Get latest sensor data
 
-void i2cScanner() - Scan I2C bus for devices
+void i2cScanner(): Scan I2C bus for devices
 
-void testMAX30102Signal() - Test MAX30102 signal quality
+void setUpdateInterval(unsigned long interval): Set update frequency
 
-void calibrateCompass() - Calibrate magnetometer
+bool isBME280Present(): Check if BME280 is connected
 
-Troubleshooting
-MAX30102 Issues
-Ensure finger is placed firmly on sensor
+bool isMAX30102Present(): Check if MAX30102 is connected
 
-Apply consistent pressure (not too light, not too hard)
+bool isMAX30205Present(): Check if MAX30205 is connected
 
-Wait 30+ seconds for stable readings
+bool isCompassPresent(): Check if QMC5883L is connected
 
-Check IR values (should be > 50,000 for good detection)
+Data Structure
+cpp
+struct SensorData {
+  struct {
+    float temperature;
+    float pressure;
+    float humidity;
+    float altitude;
+    bool present;
+  } bme280;
+  
+  struct {
+    float temperature;
+    bool present;
+    char feverStatus[20];
+  } max30205;
+  
+  struct {
+    int heartRate;
+    int spo2;
+    long irValue;
+    long redValue;
+    float sensorTemp;
+    bool fingerDetected;
+    char signalQuality[20];
+    bool present;
+    bool spo2Valid;
+  } max30102;
+  
+  struct {
+    int16_t x, y, z;
+    float heading;
+    char direction[4];
+    bool present;
+  } compass;
+};
+Examples
+Check the examples folder for:
 
-MAX30205 Issues
-Check I2C address (should be 0x48)
+BasicUsage - Basic sensor reading example
 
-Verify wiring connections
+IndividualSensors - Using sensors individually
 
-Run debugMAX30205() function for diagnostics
+DataLogger - Logging data to SD card
+
+Dependencies
+Adafruit BME280 Library
+
+MAX30205 Library
+
+SparkFun MAX3010x Library
+
+QMC5883LCompass Library
 
 License
-MIT License - Free to use for personal and commercial projects.
+MIT License
 
-Contributing
-Feel free to submit issues and pull requests to improve the library.
+Support
+For issues and questions, please create an issue on GitHub.
 
 text
 
-### File 5: `.gitignore`
-Create this file to ignore unnecessary files:
+## 6. Create Example Files
 
-```gitignore
-# Arduino
-*.elf
-*.hex
-*.eep
-*.bin
-*.lst
-*.lss
-*.sym
-*.map
-*.tmp
-*.d
-*.o
-*.su
-*.ino.bak
+Create `examples/BasicUsage/BasicUsage.ino`:
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
+```cpp
+/*
+  Basic Medical Sensors Example
+  Demonstrates reading all medical sensors
+*/
 
-# OS
-.DS_Store
-Thumbs.db
+#include <MedicalSensors.h>
 
-# Build output
-build/
-Step 3: Commit and Push to GitHub
-After creating all the files in your repository folder, run these commands:
+// Initialize with default I2C pins (21, 22 for ESP32)
+MedicalSensors sensors;
 
-bash
-# Check the status of your files
-git status
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+  
+  Serial.println("=== Medical Sensors Example ===");
+  
+  // Initialize sensors
+  if (!sensors.begin()) {
+    Serial.println("Failed to initialize sensors!");
+    Serial.println("Please check connections and restart.");
+    while (1);
+  }
+  
+  Serial.println("Sensors initialized successfully!");
+  
+  // Scan I2C bus
+  sensors.i2cScanner();
+  
+  Serial.println("\nStarting sensor readings...\n");
+}
 
-# Add all files to staging
-git add .
-
-# Commit with a message
-git commit -m "Add complete Medical Sensors library for ESP32-P4 with BME280, QMC5883L, MAX30205, MAX30102 support"
-
-# Push to GitHub
-git push origin main
-If you get an error about the branch name, try:
-
-bash
-git push origin master
-Or if you need to set upstream:
-
-bash
-git push -u origin main
+void loop() {
+  // Update sensor readings
+  sensors.update();
+  
+  // Get latest data
+  MedicalSensors::SensorData data = sensors.getData();
+  
+  // Print separator
+  Serial.println("----------------------------------------");
+  
+  // BME280 Data
+  if (data.bme280.present) {
+    Serial.println("BME280 (Environment):");
+    Serial.printf("  Temperature: %.1f °C\n", data.bme280.temperature);
+    Serial.printf("  Humidity:    %.1f %%\n", data.bme280.humidity);
+    Serial.printf("  Pressure:    %.1f hPa\n", data.bme280.pressure);
+    Serial.printf("  Altitude:    %.1f m\n", data.bme280.altitude);
+  }
+  
+  // MAX30205 Data (Body Temperature)
+  if (data.max30205.present) {
+    Serial.println("\nMAX30205 (Body Temperature):");
+    Serial.printf("  Temperature: %.2f °C\n", data.max30205.temperature);
+    Serial.printf("  Status:      %s\n", data.max30205.feverStatus);
+  }
+  
+  // MAX30102 Data (Heart Rate)
+  if (data.max30102.present) {
+    Serial.println("\nMAX30102 (Heart Rate):");
+    Serial.printf("  Heart Rate:  %d BPM\n", data.max30102.heartRate);
+    Serial.printf("  Finger:      %s\n", data.max30102.fingerDetected ? "Detected" : "Not Detected");
+    Serial.printf("  Signal:      %s\n", data.max30102.signalQuality);
+    Serial.printf("  IR Value:    %ld\n", data.max30102.irValue);
+    Serial.printf("  Red Value:   %ld\n", data.max30102.redValue);
+    Serial.printf("  Sensor Temp: %.1f °C\n", data.max30102.sensorTemp);
+  }
+  
+  // Compass Data
+  if (data.compass.present) {
+    Serial.println("\nQMC5883L (Compass):");
+    Serial.printf("  Heading:     %.1f°\n", data.compass.heading);
+    Serial.printf("  Direction:   %s\n", data.compass.direction);
+    Serial.printf("  X: %d, Y: %d, Z: %d\n", 
+                  data.compass.x, data.compass.y, data.compass.z);
+  }
+  
+  // Wait 2 seconds before next reading
+  delay(2000);
+}

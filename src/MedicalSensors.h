@@ -1,19 +1,18 @@
-#ifndef SENSOR_SYSTEM_H
-#define SENSOR_SYSTEM_H
+#ifndef MEDICAL_SENSORS_H
+#define MEDICAL_SENSORS_H
 
+#include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
 #include "Protocentral_MAX30205.h"
 #include "MAX30105.h"
-#include "heartRate.h"
-#include "spo2_algorithm.h"
 #include <QMC5883LCompass.h>
 
-class SensorSystem {
+class MedicalSensors {
 public:
   // Constructor
-  SensorSystem(uint8_t sdaPin = 28, uint8_t sclPin = 32);
+  MedicalSensors(uint8_t sdaPin = 21, uint8_t sclPin = 22); // Changed to common ESP32 defaults
   
   // Initialization
   bool begin();
@@ -21,7 +20,7 @@ public:
   // Update sensor readings
   void update();
   
-  // Get sensor data
+  // Sensor data structure
   struct SensorData {
     // BME280
     struct {
@@ -46,7 +45,7 @@ public:
     struct {
       float temperature;
       bool present;
-      String feverStatus;
+      char feverStatus[20];
     } max30205;
     
     // MAX30102
@@ -57,7 +56,7 @@ public:
       long redValue;
       float sensorTemp;
       bool fingerDetected;
-      String signalQuality;
+      char signalQuality[20];
       bool present;
       bool spo2Valid;
     } max30102;
@@ -66,18 +65,19 @@ public:
   // Get latest data
   SensorData getData();
   
-  // Get individual sensor status
-  bool isBME280Present() { return _bmePresent; }
-  bool isCompassPresent() { return _hmcPresent; }
-  bool isMAX30205Present() { return _max30205Present; }
-  bool isMAX30102Present() { return _max30102Present; }
+  // Check sensor status
+  bool isBME280Present() const { return _bmePresent; }
+  bool isCompassPresent() const { return _hmcPresent; }
+  bool isMAX30205Present() const { return _max30205Present; }
+  bool isMAX30102Present() const { return _max30102Present; }
   
-  // Utility functions
+  // I2C Scanner
   void i2cScanner();
-  void testMAX30102Signal();
-  void calibrateCompass();
-  void debugMAX30205();
   
+  // Configuration
+  void setUpdateInterval(unsigned long interval) { _updateInterval = interval; }
+  unsigned long getUpdateInterval() const { return _updateInterval; }
+
 private:
   // I2C pins
   uint8_t _sdaPin;
@@ -95,33 +95,12 @@ private:
   bool _max30205Present = false;
   bool _max30102Present = false;
   
-  // MAX30102 variables
-  static const byte RATE_SIZE = 4;
-  byte _rates[RATE_SIZE];
-  byte _rateSpot = 0;
-  long _lastBeat = 0;
-  float _beatsPerMinute;
-  int _beatAvg;
-  
-  uint32_t _irBuffer[100];
-  uint32_t _redBuffer[100];
-  int32_t _bufferLength;
-  int32_t _spo2;
-  int8_t _validSPO2;
-  int32_t _heartRate;
-  int8_t _validHeartRate;
-  
-  // Compass variables
-  int _compassX, _compassY, _compassZ;
-  float _heading;
-  char _directionArray[4];
+  // Data structure
+  SensorData _data;
   
   // Timing
   unsigned long _lastUpdate = 0;
-  const unsigned long _updateInterval = 2000;
-  
-  // Data structure
-  SensorData _data;
+  unsigned long _updateInterval = 2000;
   
   // Private methods
   bool initBME280();
@@ -134,13 +113,24 @@ private:
   void updateMAX30205();
   void updateMAX30102();
   
-  bool readMAX30205Direct(float &temperature);
-  void resetSPO2Calculation();
+  // Heart rate calculation
+  void calculateHeartRate();
   
-  // MAX30205 registers
-  static const uint8_t MAX30205_ADDR = 0x48;
-  static const uint8_t MAX30205_TEMP = 0x00;
-  static const uint8_t MAX30205_CONFIG = 0x01;
+  // Helper to copy strings safely
+  void copyString(char* dest, const char* src, size_t destSize) {
+    if (src && dest && destSize > 0) {
+      strncpy(dest, src, destSize - 1);
+      dest[destSize - 1] = '\0';
+    }
+  }
+  
+  // Heart rate calculation variables
+  static const int RATE_SIZE = 4;
+  int _rates[RATE_SIZE];
+  int _rateSpot = 0;
+  unsigned long _lastBeat = 0;
+  float _beatsPerMinute = 0;
+  int _beatAvg = 0;
 };
 
 #endif

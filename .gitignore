@@ -1,0 +1,27 @@
+# PlatformIO
+.pio
+.pioenvs
+.piolibdeps
+
+# Arduino IDE
+*.elf
+*.hex
+*.ino.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Build output
+build/
+bin/
+obj/
+
+# Doxygen
+docs/
+html/
+latex/

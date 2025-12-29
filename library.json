@@ -1,0 +1,34 @@
+{
+  "name": "MedicalSensors",
+  "version": "1.0.0",
+  "description": "Arduino library for medical sensors including BME280, QMC5883L, MAX30205, and MAX30102",
+  "keywords": "medical, sensor, health, bme280, max30205, max30102, qmc5883l, i2c",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hovomkrtumyan/MedicalSensors.git"
+  },
+  "authors": [
+    {
+      "name": "Hovomkrtumyan",
+      "email": "your.email@example.com",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/Hovomkrtumyan/MedicalSensors",
+  "frameworks": "arduino",
+  "platforms": ["espressif32", "espressif8266", "avr"],
+  "dependencies": {
+    "adafruit/Adafruit BME280 Library": "^2.2.2",
+    "protocentral/MAX30205": "^1.0.0",
+    "sparkfun/SparkFun MAX3010x Pulse and Proximity Sensor Library": "^1.1.2",
+    "mprograms/QMC5883LCompass": "^3.3.0"
+  },
+  "export": {
+    "exclude": [
+      ".github",
+      "extras",
+      "test"
+    ]
+  }
+}
